@@ -1,0 +1,9 @@
+#!/bin/bash
+#PBS -N TB_DOWNLOAD_SAMPLES
+#PBS -M fza34@sfu.ca
+#PBS -l walltime=72:00:00
+#PBS -l nodes=1:ppn=8,mem=64gb
+
+cd /global/scratch/zhf615/MALAWI/data/fastq/
+python ../../scripts/FileDownload.py /global/scratch/zhf615/MALAWI/input/samples_list_0.txt /global/scratch/zhf615/MALAWI/log_fastq_download
+
