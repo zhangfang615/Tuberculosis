@@ -18,6 +18,13 @@ reference
 	AL123456.3: H37Rv version AL123456.3 (used in this research)
 	TBSequence.fasta: H37Rv
 
+results
+============= 
+    Beijing_lineage_SNP.xlsx: 
+    SNP_count.txt		
+    data_infomation_Beijing.xlsx
+    determinism experiment.xlsx
+
 simulation
 =============
     TB_simulation.py: simulation
