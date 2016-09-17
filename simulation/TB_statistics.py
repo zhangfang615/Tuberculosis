@@ -7,6 +7,7 @@ __function__ = 'Tuberculosis simulation statistics'
 import os
 import random
 import ast
+import pandas
 
 class patient:
     def _init_(self):
@@ -172,7 +173,8 @@ def get_resistant_eventlist(patients,n, resistant_SNPs):
     return resistant_eventlist
 
 if __name__ == '__main__':
-    for filename in os.listdir('E:/PYTHON_PROJECTS/TB_simulation/test'):
+    statistic_output = file("E:/PYTHON_PROJECTS/TB_simulation/statistics", 'w')
+    for filename in os.listdir('E:/PYTHON_PROJECTS/TB_simulation/output'):
         ancestor = file("E:/PYTHON_PROJECTS/TB_simulation/ancestor.fasta")
         TB_sequence = ancestor.readline().strip()
         ancestor.close()
@@ -184,23 +186,31 @@ if __name__ == '__main__':
         parameters = filename[0:len(filename)-4].split('_')[2:6]
         simulation_file = file("E:/PYTHON_PROJECTS/TB_simulation/output/"+filename)
         reconstruct_patients_list(patients, simulation_file)
-
         unremoved = set()
         for i in range(0, len(patients)):
             if not patients[i].removal:
                 unremoved.add(i)
 
+        count_sampling = []
         count_resistant = []
+        count_unresistant = []
         count_resistant_trans = []
         count_resistant_acq = []
         count_resistant_mevent = []
         count_unresistant_oncere = []
 
-        for i in range (0,10):
+        for i in range (0,20):
+            count_resistant.append(0)
+            count_unresistant.append(0)
+            count_resistant_trans.append(0)
+            count_resistant_acq.append(0)
+            count_resistant_mevent.append(0)
+            count_unresistant_oncere.append(0)
+
             seed = random.randint(0, 100000)
             random.Random(seed)
             sampling_patients = patients_sampling(unremoved, kappa)
-
+            count_sampling.append(len(sampling_patients))
             sampling_patients.sort()
             resistant_sample=set()
             unresistant_sample=set()
@@ -223,7 +233,41 @@ if __name__ == '__main__':
                     count_resistant_mevent[i] += 1
 
             for sample in unresistant_sample:
+                count_unresistant[i] += 1
                 resistant_eventlist = get_resistant_eventlist(patients, sample, resistant_SNPs)
                 if len(resistant_eventlist) >0:
                     count_unresistant_oncere[i] += 1
-        print 0
+
+        count_sampling_pd = pandas.Series(count_sampling)
+        count_resistant_pd = pandas.Series(count_resistant)
+        count_unresistant_pd = pandas.Series(count_unresistant)
+        count_resistant_trans_pd = pandas.Series(count_resistant_trans)
+        count_resistant_acq_pd = pandas.Series(count_resistant_acq)
+        count_resistant_mevent_pd = pandas.Series(count_resistant_mevent)
+        count_unresistant_oncere_pd = pandas.Series(count_unresistant_oncere)
+
+        count_sampling_mean = count_sampling_pd.mean()
+        count_sampling_var = count_sampling_pd.var()
+        count_resistant_mean = count_resistant_pd.mean()
+        count_resistant_var = count_resistant_pd.var()
+        count_resistant_trans_mean = count_resistant_trans_pd.mean()
+        count_resistant_trans_var = count_resistant_trans_pd.var()
+        count_resistant_acq_mean = count_resistant_acq_pd.mean()
+        count_resistant_acq_var = count_resistant_acq_pd.var()
+        count_resistant_mevent_mean = count_resistant_mevent_pd.mean()
+        count_resistant_mevent_var = count_resistant_mevent_pd.var()
+        count_unresistant_mean = count_unresistant_pd.mean()
+        count_unresistant_var = count_unresistant_pd.var()
+        count_unresistant_oncere_mean = count_unresistant_oncere_pd.mean()
+        count_unresistant_oncere_var = count_unresistant_oncere_pd.var()
+
+        output_line = parameters[0] + " " + parameters[1] + " " + parameters[2] + " " + parameters[3] \
+                      + "\t" + str(count_sampling_mean) + "\t" + str(count_sampling_var)\
+                      + "\t" + str(count_resistant_mean) + "\t" + str(count_resistant_var) \
+                      + "\t" + str(count_resistant_trans_mean) + "\t" + str(count_resistant_trans_var) \
+                      + "\t" + str(count_resistant_acq_mean) + "\t" + str(count_resistant_acq_var) \
+                      + "\t" + str(count_resistant_mevent_mean) + "\t" + str(count_resistant_mevent_var)\
+                      + "\t" + str(count_unresistant_mean) + "\t" + str(count_unresistant_var) \
+                      + "\t" + str(count_unresistant_oncere_mean) + "\t" + str(count_unresistant_oncere_var) + "\n"
+        statistic_output.writelines(output_line)
+    statistic_output.close()
