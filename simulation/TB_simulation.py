@@ -1,3 +1,4 @@
+from __future__ import division
 __author__ = 'Fang'
 __date__= '2016.6.18'
 __email__= 'fza34@sfu.ca'
@@ -202,7 +203,7 @@ def develop_simulation(patients, TB_sequence, generation, n, mutation_spectrum, 
             mutate(patients[j], TB_sequence, n, mutation_spectrum, resistant_SNPs, allow_collision)
 
 
-def breakout_simulation(patients, TB_sequence, n, mutation_spectrum, events_count, resistant_SNPs,allow_collision):
+def breakout_simulation(patients, TB_sequence, n, mutation_spectrum, events_count, resistant_SNPs,allow_collision,substitution):
     P_mutation=events_count[1]/float(events_count[0])
     P_transmission=(events_count[1]+events_count[2])/float(events_count[0])
     P_resistance=(events_count[1]+events_count[2]+events_count[3])/float(events_count[0])
@@ -231,8 +232,20 @@ def breakout_simulation(patients, TB_sequence, n, mutation_spectrum, events_coun
                 get_resistance(patients[patient], TB_sequence, resistant_SNPs, allow_collision)
                 # resistance
             else:
-                patients[patient].removal = True
-                patients[patient].eventlist.append(str(4))
+                sub = random.random()
+                if sub <= substitution:
+                    transmit_patient = random.randint(0, len(patients) - 1)
+                    while patient == transmit_patient or patients[transmit_patient].removal or patients[transmit_patient].resistant:
+                        transmit_patient = random.randint(0, len(patients) - 1)
+                    patients[transmit_patient].eventlist.append(str(2) + " " + str(transmit_patient) + " " + str(patient))
+                    patients[patient].eventlist.append(str(2) + " " + str(transmit_patient) + " " + str(patient) + " " + mutationmap2string(patients[patient].mutation))
+                    patients[patient].mutation = copy.deepcopy(patients[transmit_patient].mutation)
+                    patients[patient].resistant = copy.deepcopy(patients[transmit_patient].resistant)
+                    patients[patient].resistant_mutation = copy.deepcopy(patients[transmit_patient].resistant_mutation)
+                    patients[patient].removal = False
+                else:
+                    patients[patient].removal = True
+                    patients[patient].eventlist.append(str(4))
 
 def eventlist2string(eventlist):
     event_string=""
@@ -307,18 +320,19 @@ if __name__ == '__main__':
         TB90_sequence = TB90_file.readline().strip()
     TB90_file.close()
 
-    generation =10  # generation in develop period
+    generation =12  # generation in develop period
     m=pow(2,generation)# number of patients
     miu=0.26# mutation rate
 
-    t_list=[10,20,30,40,50] # time span 10, 15, 20, 25, 30, 35, 40, 45, 50
-    beta_list=[0.02,0.025,0.03,0.035,0.04] # contact/reinfection rate 0.001,0.01,0.05,0.1,0.15,0.2,0.25,0.3,0.35,0.4
-    P_resi_list=[ 0.0005,0.0008, 0.001,0.0015,0.002] # rate of breakdown 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5
-    # Pt=0.2 # probability of seeking treatment 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8
-    # Pr=0.3 # probability of resistant 0.01,0.05, 0.1, 0.15, 0.2, 0.3, .0.4, 0.5, 0.6, 0.7, 1
-    gama_list=[0.0005,0.001,0.005,0.01,0.02] #rate of removal 0.01, 0.05, 0.1, 0.2, 0.3
-    substitution_list = [0.5]
-    kappa=0.1
+    t_list=[50,60,70,80,90,100] # time span 10, 15, 20, 25, 30, 35, 40, 45, 50
+    # beta_list=[0.02,0.025,0.03,0.035,0.04] # contact/reinfection rate 0.001,0.01,0.05,0.1,0.15,0.2,0.25,0.3,0.35,0.4
+    beta_list = [0.002]
+    # P_resi_list=[ 0.0005,0.0008, 0.001,0.0015,0.002] # rate of breakdown 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5
+    P_resi_list = [0.002]
+    # gama_list=[0.0005,0.001,0.005,0.01,0.02] #rate of removal 0.01, 0.05, 0.1, 0.2, 0.3
+    gama_list = [0.02]
+    substitution_list = [0.7]
+    kappa=0.2
     allow_collision=False # True: skip mutation event when collision False: find another position to mutate unless there are no unmutated positions
 
 
@@ -348,72 +362,73 @@ if __name__ == '__main__':
         for beta in beta_list:
             for P_resi in P_resi_list:
                 for gama in gama_list:
-                    output_path = "./output/simulation_" + str(miu) + "_" + str(t) + "_" + str(beta) + "_" + str(P_resi) + "_" + str(gama) + ".txt"
-                    if not os.path.exists(output_path):
-                        seed = random.randint(0, 100000)
-                        random.Random(seed)
-                        print str(gama)
-                        patients = []  # list of patients
-                        original_patient = patient()
-                        patients.append(original_patient)
-                        events_count = calculate_events_number(m, n, miu, t, beta, P_resi,gama)  # calculate events numbers
-                        develop_simulation(patients, TB_sequence, generation, n, mutation_spectrum, resistant_SNPs,allow_collision)
-                        breakout_simulation(patients, TB_sequence, n, mutation_spectrum, events_count, resistant_SNPs,allow_collision)
-                        sampling_patients = patients_sampling(patients, kappa, TB_sequence)
-                        # distance_matrix=get_distance_matrix(sampling_patients,TB90)
-                        # for i in range(0, m):
-                        #     print i
-                        #     trace_back(patients,i,resistant_SNPs)
-                        output = file(output_path, 'w')
-                        output.write("generation =" + str(generation))
-                        output.write("\tnumber of patients =" + str(m))
-                        output.write("\tmutation rate =" + str(miu))
-                        output.write("\ttime span =" + str(t))
-                        output.write("\tcontact/reinfection rate =" + str(beta))
-                        # output.write("\trate of breakdown =" + str(alfa))
-                        # output.write("\tprobability of seeking treatment =" + str(Pt))
-                        output.write("\tprobability of resistant =" + str(P_resi))
-                        output.write("\trate of removal =" + str(gama))
-                        output.write("\trate of sampling =" + str(kappa))
-                        output.write("\tallow_collision =" + str(allow_collision))
-                        output.write("\n\nEvents number:" + str(events_count))
-                        output.write("\n\nRandom seed:" + str(seed))
-                        output.write("\n\nPatient list: \n")
-                        i = 0
-                        for pat in patients:
-                            output.write("Patient: " + str(i) + "\n")
-                            output.write(eventlist2string(pat.eventlist).strip() + "\n")
-                            output.write("mutations: " + str(pat.mutation) + "\n")
-                            output.write("resistant_mutations:" + str(pat.resistant_mutation) + "\n")
-                            output.write("isresistant: " + str(pat.resistant) + "\n")
-                            output.write("isremoved: " + str(pat.removal) + "\n")
-                            output.write("\n")
-                            i += 1
+                    for substitution in substitution_list:
+                        output_path = "./output_new/simulation_" + str(miu) + "_" + str(t) + "_" + str(beta) + "_" + str(P_resi) + "_" + str(gama) + "_" + str(substitution) + ".txt"
+                        if True:
+                            seed = random.randint(0, 100000)
+                            random.Random(seed)
+                            print str(gama)
+                            patients = []  # list of patients
+                            original_patient = patient()
+                            patients.append(original_patient)
+                            events_count = calculate_events_number(m, n, miu, t, beta, P_resi,gama)  # calculate events numbers
+                            develop_simulation(patients, TB_sequence, generation, n, mutation_spectrum, resistant_SNPs,allow_collision)
+                            breakout_simulation(patients, TB_sequence, n, mutation_spectrum, events_count,resistant_SNPs, allow_collision,substitution)
+                            sampling_patients = patients_sampling(patients, kappa, TB_sequence)
+                            # distance_matrix=get_distance_matrix(sampling_patients,TB90)
+                            # for i in range(0, m):
+                            #     print i
+                            #     trace_back(patients,i,resistant_SNPs)
+                            output = file(output_path, 'w')
+                            output.write("generation =" + str(generation))
+                            output.write("\tnumber of patients =" + str(m))
+                            output.write("\tmutation rate =" + str(miu))
+                            output.write("\ttime span =" + str(t))
+                            output.write("\tcontact/reinfection rate =" + str(beta))
+                            output.write("\tprobability of resistant =" + str(P_resi))
+                            output.write("\trate of removal =" + str(gama))
+                            output.write("\trate of sampling =" + str(kappa))
+                            output.write("\tallow_collision =" + str(allow_collision))
+                            output.write("\n\nEvents number:" + str(events_count))
+                            output.write("\n\nRandom seed:" + str(seed))
+                            output.write("\n\nPatient list: \n")
+                            i = 0
+                            for pat in patients:
+                                output.write("Patient: " + str(i) + "\n")
+                                output.write(eventlist2string(pat.eventlist).strip() + "\n")
+                                output.write("mutations: " + str(pat.mutation) + "\n")
+                                output.write("resistant_mutations:" + str(pat.resistant_mutation) + "\n")
+                                output.write("isresistant: " + str(pat.resistant) + "\n")
+                                output.write("isremoved: " + str(pat.removal) + "\n")
+                                output.write("\n")
+                                i += 1
 
-                        count_resistant = 0
-                        sampling_patients.sort()
-                        sampling_patients_string = ""
-                        for sample in sampling_patients:
-                            sampling_patients_string += str(sample) + " "
-                            if patients[sample].resistant:
-                                count_resistant += 1
+                            count_resistant = 0
+                            sampling_patients.sort()
+                            sampling_patients_string = ""
+                            for sample in sampling_patients:
+                                sampling_patients_string += str(sample) + " "
+                                if patients[sample].resistant:
+                                    count_resistant += 1
 
-                        output.write("\n\nSampling number:" + str(len(sampling_patients)))
-                        output.write("\n\nSampling patients:" + sampling_patients_string.strip())
-                        output.write("\n\nresistant patients:" + str(count_resistant))
-
-                        # d = " \t"
-                        # for i in range(0, len(TB90)):
-                        #     d = d + str(i) + "\t"
-                        # d += "\n"
-                        # output.write(d)
-                        # for i in range(0, len(sampling_patients)):
-                        #     d = str(i) + "\t"
-                        #     for j in range(0, len(TB90)):
-                        #         d = d + str(distance_matrix[i][j]) + "\t"
-                        #     d = d + "\n"
-                        #     output.write(d)
-                        #     # print events_count[0]
-                        del patients
-                        del original_patient
-    output.close()
+                            output.write("\n\nSampling number:" + str(len(sampling_patients)))
+                            output.write("\n\nSampling patients:" + sampling_patients_string.strip())
+                            output.write("\n\nresistant patients:" + str(count_resistant))
+                            resistant_ratio = count_resistant/len(sampling_patients)
+                            output.write("\n\nresistant ratio:" + str(resistant_ratio))
+                            print (resistant_ratio)
+                            # d = " \t"
+                            # for i in range(0, len(TB90)):
+                            #     d = d + str(i) + "\t"
+                            # d += "\n"
+                            # output.write(d)
+                            # for i in range(0, len(sampling_patients)):
+                            #     d = str(i) + "\t"
+                            #     for j in range(0, len(TB90)):
+                            #         d = d + str(distance_matrix[i][j]) + "\t"
+                            #     d = d + "\n"
+                            #     output.write(d)
+                            #     # print events_count[0]
+                            del patients
+                            del original_patient
+                            output.close()
