@@ -1,0 +1,1 @@
+This dataset contains 19,453 Tweets were downloaded from Twitter by using tweepy which is a python package with keywords like "macbook pro".
